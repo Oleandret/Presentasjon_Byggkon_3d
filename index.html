@@ -3,255 +3,389 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-<title>Byggkon AI — Nova · Loki · Hilde</title>
+<meta name="theme-color" content="#030213" />
+<title>BYGG-KON · KI-agenter — Nova · Hilde · Loki</title>
 <style>
   :root{
-    --bg:#070b16;
-    --bg2:#0c1426;
-    --ink:#eaf0ff;
-    --muted:#9fb0d0;
-    --accent:#5aa9ff;
-    --accent-soft:rgba(90,169,255,.16);
-    --card:rgba(13,20,40,.55);
-    --border:rgba(255,255,255,.10);
+    --bg:#050410;
+    --bg2:#0c0a1c;
+    --ink:#f5f2ea;
+    --muted:#a39fb4;
+    --gold:#d8a84b;
+    --gold-2:#f3cd80;
+    --gold-soft:rgba(216,168,75,.13);
+    --line:rgba(216,168,75,.28);
+    --card:rgba(18,15,32,.62);
+    --border:rgba(255,255,255,.09);
+    --accent:#d8a84b;             /* per-agent, set by JS */
+    --accent-soft:rgba(216,168,75,.16);
     --font:"Inter","Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%}
   body{
     font-family:var(--font);
-    background:radial-gradient(1200px 800px at 70% 20%, var(--bg2), var(--bg) 70%);
+    background:
+      radial-gradient(1100px 760px at 72% 18%, rgba(216,168,75,.10), transparent 60%),
+      radial-gradient(1200px 900px at 30% 90%, rgba(90,120,255,.06), transparent 60%),
+      radial-gradient(1400px 1000px at 60% 40%, var(--bg2), var(--bg) 75%);
     color:var(--ink);
-    overflow:hidden;
-    -webkit-font-smoothing:antialiased;
+    overflow:hidden;-webkit-font-smoothing:antialiased;
   }
-  #scene{position:fixed;inset:0;z-index:0;}
-  /* readability gradient over 3D */
-  #veil{
-    position:fixed;inset:0;z-index:1;pointer-events:none;
-    background:linear-gradient(90deg, rgba(5,8,18,.92) 0%, rgba(5,8,18,.55) 38%, rgba(5,8,18,0) 62%);
-    transition:opacity .6s ease;
-  }
-  #deck{position:fixed;inset:0;z-index:2;}
+  #scene{position:fixed;inset:0;z-index:0}
+  /* film grain + vignette */
+  #grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.05;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+  #vignette{position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:radial-gradient(120% 120% at 50% 50%, transparent 55%, rgba(0,0,0,.55) 100%)}
+  #veil{position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:linear-gradient(90deg, rgba(5,4,16,.93) 0%, rgba(5,4,16,.6) 40%, rgba(5,4,16,0) 64%);
+    transition:opacity .6s ease}
+  .slide.center ~ #veil{opacity:0}
+  #deck{position:fixed;inset:0;z-index:2}
 
-  .slide{
-    position:absolute;inset:0;
-    display:flex;align-items:center;
-    padding:7vh clamp(28px,8vw,140px);
-    opacity:0;visibility:hidden;
-    transform:translateY(34px);
-    transition:opacity .7s ease, transform .7s ease, visibility .7s;
-  }
-  .slide.active{opacity:1;visibility:visible;transform:translateY(0)}
-  .wrap{max-width:680px}
+  .slide{position:absolute;inset:0;display:flex;align-items:center;
+    padding:7vh clamp(28px,7vw,130px);
+    opacity:0;visibility:hidden;transform:translateY(34px) scale(.99);
+    transition:opacity .7s ease, transform .8s cubic-bezier(.2,.7,.2,1), visibility .7s}
+  .slide.active{opacity:1;visibility:visible;transform:none}
+  .wrap{max-width:720px;width:100%}
   .slide.center{justify-content:center;text-align:center}
-  .slide.center .wrap{max-width:840px}
+  .slide.center .wrap{max-width:980px}
 
-  .eyebrow{
-    display:inline-flex;align-items:center;gap:9px;
-    font-size:13px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;
-    color:var(--accent);margin-bottom:22px;
-    padding:7px 14px;border:1px solid var(--border);border-radius:999px;
-    background:var(--accent-soft);
-  }
-  .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
-  h1{font-size:clamp(40px,7vw,84px);line-height:1.02;font-weight:800;letter-spacing:-.02em}
-  h1 .grad{
-    background:linear-gradient(120deg,#7cc0ff,#a970ff 50%,#4dd6a0);
-    -webkit-background-clip:text;background-clip:text;color:transparent;
-  }
-  h2{font-size:clamp(34px,5.4vw,62px);line-height:1.05;font-weight:800;letter-spacing:-.02em}
+  /* staggered reveal of children when active */
+  .slide .rise{opacity:0;transform:translateY(22px);transition:opacity .6s ease, transform .6s ease}
+  .slide.active .rise{opacity:1;transform:none}
+  .slide.active .rise:nth-child(1){transition-delay:.05s}
+  .slide.active .rise:nth-child(2){transition-delay:.13s}
+  .slide.active .rise:nth-child(3){transition-delay:.22s}
+  .slide.active .rise:nth-child(4){transition-delay:.31s}
+  .slide.active .rise:nth-child(5){transition-delay:.40s}
+  .slide.active .rise:nth-child(6){transition-delay:.49s}
+
+  .eyebrow{display:inline-flex;align-items:center;gap:9px;font-size:12.5px;font-weight:600;
+    letter-spacing:.22em;text-transform:uppercase;color:var(--gold-2);margin-bottom:22px;
+    padding:7px 15px;border:1px solid var(--line);border-radius:999px;background:var(--gold-soft)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 12px var(--gold)}
+
+  h1{font-size:clamp(42px,7.4vw,88px);line-height:1.0;font-weight:800;letter-spacing:-.025em}
+  h2{font-size:clamp(33px,5.2vw,60px);line-height:1.04;font-weight:800;letter-spacing:-.02em}
+  .grad{background:linear-gradient(110deg,var(--gold-2),var(--gold) 45%,#b07d2a);
+    -webkit-background-clip:text;background-clip:text;color:transparent}
   .agent-name{color:var(--accent)}
-  .lead{font-size:clamp(17px,2.1vw,22px);line-height:1.55;color:var(--muted);margin-top:20px;max-width:600px}
+  .lead{font-size:clamp(16.5px,2vw,21px);line-height:1.55;color:var(--muted);margin-top:20px;max-width:620px}
   .slide.center .lead{margin-left:auto;margin-right:auto}
-  .tag{font-size:14px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+  .tag{font-size:13px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
+  .price{display:inline-block;margin-top:18px;font-weight:700;color:var(--ink);font-size:15px;
+    padding:8px 16px;border-radius:10px;border:1px solid var(--line);background:var(--gold-soft)}
+  .price b{color:var(--gold-2)}
 
-  ul.feat{list-style:none;margin-top:26px;display:grid;gap:14px}
-  ul.feat li{
-    display:flex;gap:14px;align-items:flex-start;
-    font-size:16px;line-height:1.45;color:#d6e0f5;
-  }
-  ul.feat li::before{
-    content:"";flex:0 0 auto;margin-top:7px;
-    width:9px;height:9px;border-radius:2px;transform:rotate(45deg);
-    background:var(--accent);box-shadow:0 0 10px var(--accent);
-  }
-  .chip{
-    display:inline-block;margin-top:30px;
-    font-size:15px;font-weight:600;color:var(--ink);
-    padding:11px 20px;border-radius:12px;text-decoration:none;
-    border:1px solid var(--border);
-    background:linear-gradient(180deg, var(--accent-soft), rgba(255,255,255,.02));
-    transition:transform .2s ease, border-color .2s ease;
-  }
-  .chip:hover{transform:translateY(-2px);border-color:var(--accent)}
-  .chip span{color:var(--accent)}
+  /* output document chips */
+  .outs{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
+  .outs .o{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;color:#e7e1d2;
+    padding:9px 14px;border-radius:10px;border:1px solid var(--border);background:var(--card)}
+  .outs .o::before{content:"";width:9px;height:11px;border-radius:1px;
+    background:linear-gradient(180deg,var(--gold-2),var(--gold));box-shadow:0 0 8px var(--gold-soft)}
 
-  /* trio comparison */
-  .trio{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:38px;text-align:left}
-  .trio .col{
-    border:1px solid var(--border);border-radius:16px;padding:22px 20px;
-    background:var(--card);backdrop-filter:blur(8px);
-  }
-  .trio h3{font-size:20px;margin-bottom:6px}
-  .trio .role{font-size:13px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px}
-  .trio p{font-size:14px;line-height:1.5;color:var(--muted)}
-  .c-nova{color:#5aa9ff} .c-loki{color:#a970ff} .c-hilde{color:#4dd6a0}
+  .chips{margin-top:26px;display:flex;gap:12px;flex-wrap:wrap}
+  .chip{font-size:14.5px;font-weight:600;color:var(--ink);padding:11px 18px;border-radius:11px;
+    text-decoration:none;border:1px solid var(--border);
+    background:linear-gradient(180deg,var(--gold-soft),rgba(255,255,255,.02));
+    transition:transform .2s, border-color .2s}
+  .chip:hover{transform:translateY(-2px);border-color:var(--gold)}
+  .chip span{color:var(--gold-2)}
+  .chip.solid{background:linear-gradient(180deg,var(--gold-2),var(--gold));color:#231603;border-color:transparent}
 
-  .meta{margin-top:30px;display:flex;flex-wrap:wrap;gap:10px 26px;color:var(--muted);font-size:15px}
-  .meta a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--border)}
-  .meta a:hover{border-color:var(--accent)}
+  /* ---------- PIPELINE component ---------- */
+  .pipe{display:flex;align-items:stretch;gap:14px;margin-top:34px;flex-wrap:nowrap}
+  .pstack{display:flex;flex-direction:column;gap:10px;justify-content:center}
+  .pnode{display:flex;align-items:center;gap:10px;padding:12px 15px;border-radius:13px;
+    border:1px solid var(--border);background:var(--card);backdrop-filter:blur(8px);
+    font-size:13.5px;color:#e9e3d4;white-space:nowrap}
+  .pnode .ic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;
+    background:rgba(255,255,255,.05);border:1px solid var(--border);font-size:15px}
+  .agentnode{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    min-width:120px;padding:20px 18px;border-radius:18px;color:var(--ink);
+    border:1px solid var(--accent);background:radial-gradient(120% 120% at 50% 0%, var(--accent-soft), rgba(12,10,28,.7));
+    box-shadow:0 0 34px var(--accent-soft), inset 0 0 24px rgba(255,255,255,.03)}
+  .agentnode b{font-size:21px;letter-spacing:.01em}
+  .agentnode small{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+  .agentnode .pulse{position:absolute;inset:-1px;border-radius:18px;border:1px solid var(--accent);
+    animation:ring 2.6s ease-out infinite;opacity:0}
+  @keyframes ring{0%{transform:scale(1);opacity:.7}100%{transform:scale(1.18);opacity:0}}
+  .docout{position:relative;display:flex;flex-direction:column;gap:7px;min-width:168px;padding:16px 16px 16px;
+    border-radius:13px;color:#1c1405;
+    background:linear-gradient(160deg,#f7efdc,#e9d8af);
+    box-shadow:0 16px 40px rgba(0,0,0,.4), 0 0 0 1px rgba(216,168,75,.5);
+    transform:rotate(-1.4deg)}
+  .docout::before{content:"";position:absolute;top:0;right:0;border-width:0 20px 20px 0;border-style:solid;
+    border-color:transparent rgba(0,0,0,.18) transparent transparent;border-radius:0 13px 0 0}
+  .docout .dtitle{font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#7a5a18}
+  .docout .dline{height:7px;border-radius:3px;background:rgba(122,90,24,.22)}
+  .docout .dline.s{width:62%} .docout .dline.m{width:88%}
+  .docout .dstamp{margin-top:4px;font-size:11px;font-weight:700;color:#8a6411;display:flex;align-items:center;gap:6px}
+  .docout .dstamp::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent)}
 
-  /* nav */
-  #nav{position:fixed;z-index:5;right:clamp(20px,4vw,46px);bottom:34px;display:flex;gap:12px}
-  .navbtn{
-    width:50px;height:50px;border-radius:50%;cursor:pointer;
-    border:1px solid var(--border);background:rgba(15,22,44,.7);color:var(--ink);
-    font-size:22px;display:grid;place-items:center;
-    transition:border-color .2s, transform .15s, background .2s;backdrop-filter:blur(6px);
-  }
-  .navbtn:hover{border-color:var(--accent);background:rgba(20,30,60,.9)}
+  /* animated connector */
+  .conn{position:relative;flex:1 1 40px;min-width:34px;align-self:center;height:2px;border-radius:2px;overflow:visible;
+    background:linear-gradient(90deg,transparent,var(--line) 20%,var(--line) 80%,transparent)}
+  .conn i{position:absolute;top:50%;left:0;width:8px;height:8px;border-radius:50%;transform:translateY(-50%);
+    background:var(--gold-2);box-shadow:0 0 12px var(--gold);animation:travel 2.1s linear infinite}
+  .conn i:nth-child(2){animation-delay:.7s;opacity:.7}
+  .conn i:nth-child(3){animation-delay:1.4s;opacity:.45}
+  @keyframes travel{0%{left:-4%;opacity:0}10%{opacity:1}90%{opacity:1}100%{left:104%;opacity:0}}
+
+  /* overview pipeline (intro) */
+  .triflow{display:grid;grid-template-columns:1fr;gap:18px;margin-top:34px;text-align:left}
+  .triflow .row{display:flex;align-items:center;gap:14px}
+  .triflow .src{flex:0 0 150px}
+  .triflow .agentnode{min-width:108px;padding:14px}
+  .triflow .docout{min-width:150px;transform:rotate(-1deg);padding:13px}
+
+  /* price table */
+  .ptable{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:38px;text-align:left}
+  .pcard{border:1px solid var(--border);border-radius:18px;padding:24px 22px;background:var(--card);
+    backdrop-filter:blur(8px);position:relative;overflow:hidden}
+  .pcard::after{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:linear-gradient(90deg,var(--c),transparent)}
+  .pcard h3{font-size:23px;margin-bottom:4px;color:var(--c)}
+  .pcard .sub{font-size:13px;color:var(--muted);min-height:38px;line-height:1.4}
+  .pcard .amt{font-size:30px;font-weight:800;margin-top:14px;color:var(--ink)}
+  .pcard .amt small{font-size:13px;font-weight:600;color:var(--muted)}
+  .pcard .feat{list-style:none;margin-top:14px;display:grid;gap:8px}
+  .pcard .feat li{font-size:13px;color:#d9d3c5;display:flex;gap:8px}
+  .pcard .feat li::before{content:"›";color:var(--c);font-weight:800}
+
+  .meta{margin-top:30px;display:flex;flex-wrap:wrap;gap:10px 26px;color:var(--muted);font-size:15px;justify-content:center}
+  .meta a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line)}
+  .meta a:hover{border-color:var(--gold)}
+
+  /* chrome */
+  #brand{position:fixed;z-index:5;left:clamp(20px,4vw,44px);top:28px;font-weight:800;letter-spacing:.06em;font-size:16px}
+  #brand b{color:var(--gold-2)}
+  #counter{position:fixed;z-index:5;right:clamp(20px,4vw,44px);top:30px;font-size:12.5px;letter-spacing:.2em;color:var(--muted)}
+  #dots{position:fixed;z-index:5;left:clamp(18px,4vw,44px);bottom:40px;display:flex;flex-direction:column;gap:11px}
+  .pip{width:10px;height:10px;border-radius:50%;border:1px solid var(--line);cursor:pointer;background:transparent;transition:all .25s}
+  .pip.on{background:var(--gold);border-color:var(--gold);box-shadow:0 0 12px var(--gold)}
+  #nav{position:fixed;z-index:5;right:clamp(20px,4vw,44px);bottom:34px;display:flex;gap:12px}
+  .navbtn{width:50px;height:50px;border-radius:50%;cursor:pointer;border:1px solid var(--line);
+    background:rgba(15,12,30,.7);color:var(--ink);font-size:22px;display:grid;place-items:center;
+    transition:border-color .2s, transform .15s, background .2s;backdrop-filter:blur(6px)}
+  .navbtn:hover{border-color:var(--gold);background:rgba(24,18,44,.9)}
   .navbtn:active{transform:scale(.92)}
-  .navbtn:disabled{opacity:.32;cursor:default}
+  .navbtn:disabled{opacity:.3;cursor:default}
+  #hint{position:fixed;z-index:5;left:50%;transform:translateX(-50%);bottom:34px;color:var(--muted);font-size:12.5px;letter-spacing:.12em;animation:pulse 2.4s infinite}
+  @keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
 
-  #dots{position:fixed;z-index:5;left:clamp(20px,4vw,46px);bottom:40px;display:flex;flex-direction:column;gap:12px}
-  .pip{width:11px;height:11px;border-radius:50%;border:1px solid var(--border);cursor:pointer;background:transparent;transition:all .25s}
-  .pip.on{background:var(--accent);border-color:var(--accent);box-shadow:0 0 12px var(--accent)}
+  #progress{position:fixed;z-index:6;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--gold),var(--gold-2));box-shadow:0 0 10px var(--gold);transition:width .5s ease}
 
-  #counter{position:fixed;z-index:5;right:clamp(20px,4vw,46px);top:32px;font-size:13px;letter-spacing:.18em;color:var(--muted)}
-  #brand{position:fixed;z-index:5;left:clamp(20px,4vw,46px);top:30px;font-weight:800;letter-spacing:.04em;font-size:16px}
-  #brand b{color:var(--accent)}
-  #hint{position:fixed;z-index:5;left:50%;transform:translateX(-50%);bottom:34px;color:var(--muted);font-size:13px;letter-spacing:.1em;animation:pulse 2.4s infinite}
-  @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
-
-  @media (max-width:820px){
-    #veil{background:linear-gradient(180deg, rgba(5,8,18,.55) 0%, rgba(5,8,18,.85) 60%)}
-    .slide{padding:9vh 26px;align-items:flex-end}
+  @media (max-width:900px){
+    #veil{background:linear-gradient(180deg, rgba(5,4,16,.45) 0%, rgba(5,4,16,.86) 60%)}
+    .slide{padding:8vh 24px;align-items:flex-end}
     .slide.center{align-items:center}
     .wrap{max-width:100%}
-    .trio{grid-template-columns:1fr}
-    #dots{display:none}
-    #hint{display:none}
+    .pipe{flex-wrap:wrap;gap:12px}
+    .conn{flex-basis:100%;height:30px;width:2px;background:linear-gradient(180deg,transparent,var(--line),transparent);margin:0 auto}
+    .conn i{top:0;left:50%;transform:translateX(-50%);animation:travelv 2.1s linear infinite}
+    @keyframes travelv{0%{top:-4%;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:104%;opacity:0}}
+    .ptable{grid-template-columns:1fr}
+    .triflow .row{flex-wrap:wrap}
+    #dots,#hint{display:none}
   }
 </style>
 </head>
 <body>
 <canvas id="scene"></canvas>
+<div id="grain"></div>
+<div id="vignette"></div>
 <div id="veil"></div>
+<div id="progress"></div>
 
-<div id="brand">BYGGKON <b>AI</b></div>
-<div id="counter">01 / 07</div>
+<div id="brand">BYGG-KON <b>KI</b></div>
+<div id="counter">01 / 08</div>
 
 <div id="deck">
 
   <!-- 0 HERO -->
-  <section class="slide center active" data-accent="#5aa9ff" data-mode="trio">
+  <section class="slide center active" data-accent="#d8a84b" data-mode="trio">
     <div class="wrap">
-      <span class="eyebrow"><span class="dot"></span> Produktlansering 2026</span>
-      <h1>Møt <span class="grad">Nova, Loki<br>og Hilde</span></h1>
-      <p class="lead">Tre spesialiserte AI-agenter for byggebransjen — kunnskap, dokumenter og eiendom. Levert til din bedrift som månedsabonnement.</p>
+      <span class="eyebrow rise"><span class="dot"></span> KI-agenter for byggebransjen</span>
+      <h1 class="rise">Møt <span class="grad">Nova, Hilde<br>og Loki</span></h1>
+      <p class="lead rise">Tre skreddersydde KI-agenter fra BYGG-KON. Alt de leverer er ferdige dokumenter en byggbedrift kan bruke — på månedsabonnement.</p>
     </div>
   </section>
 
-  <!-- 1 INTRO -->
-  <section class="slide center" data-accent="#7cc0ff" data-mode="trio">
+  <!-- 1 INTRO: output = dokumenter -->
+  <section class="slide center" data-accent="#d8a84b" data-mode="trio">
     <div class="wrap">
-      <div class="tag">Hvorfor tre agenter?</div>
-      <h2>Én agent kan ikke kunne alt.<br>Tre kan dekke alt.</h2>
-      <p class="lead">Vi har delt opp arbeidshverdagen i tre domener og gitt hvert sitt fagdyktige AI-hode. Bedriften din spør den som kan svaret — i stedet for å lete selv.</p>
-      <div class="trio">
-        <div class="col"><div class="role c-nova">Fag &amp; regelverk</div><h3 class="c-nova">Nova</h3><p>Svarer på TEK17, NS-standarder og deres egne rutiner — med kildehenvisning.</p></div>
-        <div class="col"><div class="role c-loki">Dokumenter &amp; tegninger</div><h3 class="c-loki">Loki</h3><p>Søker i hele bedriftens OneDrive — inkludert AutoCAD-tegninger.</p></div>
-        <div class="col"><div class="role c-hilde">Eiendom</div><h3 class="c-hilde">Hilde</h3><p>Eierinfo og oppslag direkte i Kartverkets matrikkel.</p></div>
+      <div class="tag rise">Én idé</div>
+      <h2 class="rise">Du spør. Agenten jobber.<br>Du får et <span class="grad">dokument</span>.</h2>
+      <p class="lead rise">Hver agent tar et spørsmål eller en kilde, gjør jobben, og leverer et resultat du faktisk kan sende videre, arkivere eller bygge på.</p>
+      <div class="triflow rise">
+        <div class="row">
+          <div class="pnode src"><span class="ic">💬</span> Faglig spørsmål</div>
+          <div class="conn"><i></i><i></i></div>
+          <div class="agentnode" style="--accent:#5b8cff"><b>Nova</b><small>Fagsvar</small></div>
+          <div class="conn"><i></i><i></i></div>
+          <div class="docout" style="--accent:#5b8cff"><div class="dtitle">Faglig svar</div><div class="dline m"></div><div class="dline s"></div></div>
+        </div>
+        <div class="row">
+          <div class="pnode src"><span class="ic">📍</span> Adresse</div>
+          <div class="conn"><i></i><i></i></div>
+          <div class="agentnode" style="--accent:#36c08e"><b>Hilde</b><small>Eiendom</small></div>
+          <div class="conn"><i></i><i></i></div>
+          <div class="docout" style="--accent:#36c08e"><div class="dtitle">Eiendomsdossier</div><div class="dline m"></div><div class="dline s"></div></div>
+        </div>
+        <div class="row">
+          <div class="pnode src"><span class="ic">🗂️</span> Dokumentarkiv</div>
+          <div class="conn"><i></i><i></i></div>
+          <div class="agentnode" style="--accent:#a96bff"><b>Loki</b><small>Søk</small></div>
+          <div class="conn"><i></i><i></i></div>
+          <div class="docout" style="--accent:#a96bff"><div class="dtitle">Søkbart arkiv</div><div class="dline m"></div><div class="dline s"></div></div>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- 2 NOVA -->
-  <section class="slide" data-accent="#5aa9ff" data-mode="nova">
+  <section class="slide" data-accent="#5b8cff" data-mode="nova">
     <div class="wrap">
-      <div class="tag" style="color:#5aa9ff">Agent 01 — Fagassistenten</div>
-      <h2><span class="agent-name">Nova</span> kan byggfaget.</h2>
-      <p class="lead">Fageksperten for bedriften din. Nova svarer på spørsmål om bygging, regelverk og tekniske detaljer ut fra fagdokumentasjonen dere kobler på — alltid med kilder.</p>
-      <ul class="feat">
-        <li>Svarer på byggfag og regelverk som TEK17 og NS-standarder</li>
-        <li>Leveres uten ferdig Byggforsk-innhold — dere kobler på egen fagdokumentasjon og rutiner</li>
-        <li>Svarer med kildehenvisninger du kan etterprøve</li>
-        <li>Drevet av Claude Opus 4.8</li>
-      </ul>
-      <a class="chip" href="https://nova-ai-agent-bygg-kon-production.up.railway.app/" target="_blank" rel="noopener">Åpne Nova <span>→</span></a>
-    </div>
-  </section>
-
-  <!-- 3 LOKI -->
-  <section class="slide" data-accent="#a970ff" data-mode="loki">
-    <div class="wrap">
-      <div class="tag" style="color:#a970ff">Agent 02 — Kunnskapsmotoren</div>
-      <h2><span class="agent-name">Loki</span> husker hver fil.</h2>
-      <p class="lead">En privat AI-kunnskapsmotor for din bedrift, som kontinuerlig synkroniserer hele deres OneDrive og SharePoint inn i et søk som forstår innholdet — ikke bare filnavnet.</p>
-      <ul class="feat">
-        <li>Indekserer PDF, Office, e-post og 25+ formater — også AutoCAD DWG &amp; DXF</li>
-        <li>Norsk OCR på skannede tegninger og dokumenter</li>
-        <li>Oppdateres hvert 10. minutt — 100 % privat i egen tenant</li>
-        <li>Koble på Claude eller Cursor via MCP</li>
-      </ul>
-      <a class="chip" href="https://byggkon-loki-ai-production.up.railway.app/" target="_blank" rel="noopener">Åpne Loki <span>→</span></a>
-    </div>
-  </section>
-
-  <!-- 4 HILDE -->
-  <section class="slide" data-accent="#4dd6a0" data-mode="hilde">
-    <div class="wrap">
-      <div class="tag" style="color:#4dd6a0">Agent 03 — Eiendomseksperten</div>
-      <h2><span class="agent-name">Hilde</span> kjenner hver tomt.</h2>
-      <p class="lead">Eiendomsagenten med direkte linje til Kartverket. Hilde finner eierinformasjon og kan svare på alt i matrikkelen — fra gårds- og bruksnummer til tomtedata.</p>
-      <ul class="feat">
-        <li>Finner eierinformasjon for enhver eiendom</li>
-        <li>Spør hele matrikkelen fra Kartverket</li>
-        <li>Søk på adresse, kommune, eier eller naturlig språk</li>
-        <li>Perfekt for tomte- og eiendomsanalyse før prosjektstart</li>
-      </ul>
-    </div>
-  </section>
-
-  <!-- 5 SAMARBEID -->
-  <section class="slide center" data-accent="#7cc0ff" data-mode="trio">
-    <div class="wrap">
-      <div class="tag">Sammen</div>
-      <h2>Hele arbeidsflyten,<br>fra spørsmål til byggeplass.</h2>
-      <div class="trio">
-        <div class="col"><div class="role c-nova">01 · Nova</div><p>«Hva sier TEK17 om rømningsvei her?» — får regelverket og kilden.</p></div>
-        <div class="col"><div class="role c-loki">02 · Loki</div><p>«Finn snittegningen for Travbaneveien 3» — henter tegningen fra arkivet.</p></div>
-        <div class="col"><div class="role c-hilde">03 · Hilde</div><p>«Hvem eier nabotomten?» — slår opp i matrikkelen på sekunder.</p></div>
+      <div class="tag rise">Agent 01 — Fagassistenten</div>
+      <h2 class="rise"><span class="agent-name">Nova</span> — faglig kontekst<br>på sekundet.</h2>
+      <p class="lead rise">Nova svarer på faglige spørsmål om byggebransjen direkte i chat, Teams eller e-post, og tar imot vedlegg for presise svar i kontekst. Leveres uten ferdig Byggforsk-innhold — dere kobler på egen fagdokumentasjon.</p>
+      <div class="pipe rise">
+        <div class="pstack">
+          <div class="pnode"><span class="ic">💬</span> Spørsmål</div>
+          <div class="pnode"><span class="ic">📎</span> Vedlegg</div>
+        </div>
+        <div class="conn"><i></i><i></i><i></i></div>
+        <div class="agentnode"><span class="pulse"></span><b>Nova</b><small>Claude Opus 4.8</small></div>
+        <div class="conn"><i></i><i></i><i></i></div>
+        <div class="docout"><div class="dtitle">Faglig svar</div><div class="dline m"></div><div class="dline m"></div><div class="dline s"></div><div class="dstamp">Med kildehenvisning</div></div>
       </div>
-      <p class="lead">Tre agenter som snakker samme språk som faget ditt — tilgjengelig der du jobber.</p>
+      <div class="outs rise">
+        <span class="o">Faglige svar</span><span class="o">Notater &amp; vurderinger</span><span class="o">Svar i Teams &amp; e-post</span>
+      </div>
+      <div class="chips rise">
+        <span class="price"><b>890,–</b> eks. mva / mnd</span>
+        <a class="chip" href="https://nova-ai-agent-bygg-kon-production.up.railway.app/" target="_blank" rel="noopener">Åpne Nova <span>→</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 HILDE -->
+  <section class="slide" data-accent="#36c08e" data-mode="hilde">
+    <div class="wrap">
+      <div class="tag rise">Agent 02 — Eiendomseksperten</div>
+      <h2 class="rise"><span class="agent-name">Hilde</span> — fra adresse til<br>komplett dossier.</h2>
+      <p class="lead rise">Hilde slår opp i Matrikkelen, Grunnboken og Brønnøysundregistrene og samler eiendom, eier og selskap i ett oversiktlig dokument — klart før prosjektstart.</p>
+      <div class="pipe rise">
+        <div class="pstack">
+          <div class="pnode"><span class="ic">🗺️</span> Matrikkelen</div>
+          <div class="pnode"><span class="ic">📜</span> Grunnboken</div>
+          <div class="pnode"><span class="ic">🏢</span> Brønnøysund</div>
+        </div>
+        <div class="conn"><i></i><i></i><i></i></div>
+        <div class="agentnode"><span class="pulse"></span><b>Hilde</b><small>Kartverket</small></div>
+        <div class="conn"><i></i><i></i><i></i></div>
+        <div class="docout"><div class="dtitle">Eiendomsdossier</div><div class="dline m"></div><div class="dline m"></div><div class="dline s"></div><div class="dstamp">Eiendom · eier · selskap</div></div>
+      </div>
+      <div class="outs rise">
+        <span class="o">Eiendomsdossier</span><span class="o">Eierinformasjon</span><span class="o">Selskapsdata</span>
+      </div>
+      <div class="chips rise">
+        <span class="price"><b>490,–</b> eks. mva / mnd</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 LOKI -->
+  <section class="slide" data-accent="#a96bff" data-mode="loki">
+    <div class="wrap">
+      <div class="tag rise">Agent 03 — Kunnskapsmotoren</div>
+      <h2 class="rise"><span class="agent-name">Loki</span> — hele arkivet,<br>tilgjengelig for KI.</h2>
+      <p class="lead rise">Loki finner, leser og vektoriserer bedriftens egne dokumenter — også AutoCAD-tegninger — og gjør hele arkivet semantisk søkbart for språkmodeller via MCP.</p>
+      <div class="pipe rise">
+        <div class="pstack">
+          <div class="pnode"><span class="ic">📄</span> PDF &amp; Office</div>
+          <div class="pnode"><span class="ic">📐</span> DWG &amp; DXF</div>
+          <div class="pnode"><span class="ic">☁️</span> OneDrive</div>
+        </div>
+        <div class="conn"><i></i><i></i><i></i></div>
+        <div class="agentnode"><span class="pulse"></span><b>Loki</b><small>Parse → vektor</small></div>
+        <div class="conn"><i></i><i></i><i></i></div>
+        <div class="docout"><div class="dtitle">Søkbart arkiv</div><div class="dline m"></div><div class="dline m"></div><div class="dline s"></div><div class="dstamp">Semantisk søk · MCP</div></div>
+      </div>
+      <div class="outs rise">
+        <span class="o">Semantisk dokumentsøk</span><span class="o">Svar fra egne filer</span><span class="o">Norsk OCR</span>
+      </div>
+      <div class="chips rise">
+        <span class="price"><b>Spesialtilpasset</b> tilbud</span>
+        <a class="chip" href="https://byggkon-loki-ai-production.up.railway.app/" target="_blank" rel="noopener">Åpne Loki <span>→</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 MCP / kobling -->
+  <section class="slide center" data-accent="#d8a84b" data-mode="trio">
+    <div class="wrap">
+      <div class="tag rise">Hvordan det kobles på</div>
+      <h2 class="rise">Din egen <span class="grad">MCP-nøkkel</span> —<br>rett inn i verktøyet du bruker.</h2>
+      <p class="lead rise">Hver agent eksponeres via Model Context Protocol. Du kobler den til din bruker i Claude eller ChatGPT, og agentens funksjoner blir tilgjengelige der du allerede jobber.</p>
+      <div class="triflow rise" style="max-width:760px;margin-left:auto;margin-right:auto">
+        <div class="row" style="justify-content:center">
+          <div class="agentnode" style="--accent:#5b8cff;min-width:90px"><b>Nova</b></div>
+          <div class="agentnode" style="--accent:#36c08e;min-width:90px"><b>Hilde</b></div>
+          <div class="agentnode" style="--accent:#a96bff;min-width:90px"><b>Loki</b></div>
+          <div class="conn"><i></i><i></i><i></i></div>
+          <div class="pnode"><span class="ic">🔑</span> MCP-nøkkel</div>
+          <div class="conn"><i></i><i></i><i></i></div>
+          <div class="pnode"><span class="ic">✦</span> Claude / ChatGPT</div>
+        </div>
+      </div>
     </div>
   </section>
 
   <!-- 6 PRIS -->
-  <section class="slide center" data-accent="#4dd6a0" data-mode="trio">
+  <section class="slide center" data-accent="#d8a84b" data-mode="trio">
     <div class="wrap">
-      <div class="tag">Slik leverer vi det</div>
-      <h2>Månedsabonnement —<br>velg agentene du trenger.</h2>
-      <p class="lead">Nova, Loki og Hilde selges som produkter til din bedrift, på fast pris per måned. Start med én agent eller ta hele teamet — skaler opp eller ned når du vil.</p>
-      <div class="trio">
-        <div class="col"><div class="role c-nova">Per måned</div><h3 class="c-nova">Nova</h3><p>Fageksperten, koblet på dokumentasjonen deres.</p></div>
-        <div class="col"><div class="role c-loki">Per måned</div><h3 class="c-loki">Loki</h3><p>Kunnskapsmotoren over hele bedriftens arkiv.</p></div>
-        <div class="col"><div class="role c-hilde">Per måned</div><h3 class="c-hilde">Hilde</h3><p>Eiendomsoppslag rett i matrikkelen.</p></div>
+      <span class="eyebrow rise"><span class="dot"></span> Månedsabonnement</span>
+      <h2 class="rise">Velg agentene<br>du trenger.</h2>
+      <div class="ptable rise">
+        <div class="pcard" style="--c:#5b8cff">
+          <h3>Nova</h3>
+          <div class="sub">Faglig kontekst og bransjepraksis, på sekundet.</div>
+          <div class="amt">890,– <small>eks. mva / mnd</small></div>
+          <ul class="feat"><li>Svar i chat, Teams &amp; e-post</li><li>Tar imot vedlegg</li><li>Med kildehenvisning</li></ul>
+        </div>
+        <div class="pcard" style="--c:#36c08e">
+          <h3>Hilde</h3>
+          <div class="sub">Fra adresse til komplett eiendomsoversikt.</div>
+          <div class="amt">490,– <small>eks. mva / mnd</small></div>
+          <ul class="feat"><li>Matrikkel + Grunnbok</li><li>Brønnøysundregistrene</li><li>Samlet dossier</li></ul>
+        </div>
+        <div class="pcard" style="--c:#a96bff">
+          <h3>Loki</h3>
+          <div class="sub">Hele dokumentarkivet, tilgjengelig for KI.</div>
+          <div class="amt">Tilbud <small>etter omfang</small></div>
+          <ul class="feat"><li>Alle filtyper + DWG</li><li>Semantisk søk via MCP</li><li>100 % i egen tenant</li></ul>
+        </div>
       </div>
-      <p class="lead">Ta kontakt for pris og oppsett tilpasset bedriften din.</p>
+      <p class="lead rise">Betaling via faktura, månedlig. Flere brukere? Ta kontakt for tilbud.</p>
     </div>
   </section>
 
   <!-- 7 CTA -->
-  <section class="slide center" data-accent="#a970ff" data-mode="trio">
+  <section class="slide center" data-accent="#d8a84b" data-mode="trio">
     <div class="wrap">
-      <span class="eyebrow"><span class="dot"></span> Klar til bruk</span>
-      <h1>Ta i bruk <span class="grad">Byggkon AI</span></h1>
-      <p class="lead">Nova, Loki og Hilde er klare til å rulles ut i din bedrift — på månedsabonnement. Ta kontakt, så setter vi opp en demo.</p>
-      <div class="meta">
-        <span>🌐 <a href="https://www.byggkon.no" target="_blank" rel="noopener">byggkon.no</a></span>
-        <span>✉️ <a href="mailto:nova@byggkon.ai">nova@byggkon.ai</a></span>
+      <span class="eyebrow rise"><span class="dot"></span> Bestill eller få tilbud</span>
+      <h1 class="rise">Klar for <span class="grad">KI bygd for bygg</span>?</h1>
+      <p class="lead rise">Velg agentene du ønsker, eller beskriv et spesialtilpasset behov. Vi tar kontakt for en uforpliktende prat.</p>
+      <div class="chips rise" style="justify-content:center">
+        <a class="chip solid" href="https://www.byggkon.no/ki-agenter" target="_blank" rel="noopener">Bestill på byggkon.no</a>
+      </div>
+      <div class="meta rise">
+        <span>🌐 <a href="https://www.byggkon.no/ki-agenter" target="_blank" rel="noopener">byggkon.no/ki-agenter</a></span>
+        <span>✉️ <a href="mailto:oat@byggkon.no">oat@byggkon.no</a></span>
         <span>📍 Travbaneveien 3, 4031 Stavanger</span>
       </div>
     </div>
@@ -270,272 +404,200 @@
 <script>
 (function(){
   "use strict";
-  /* ---------- Slides / navigation ---------- */
-  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
-  var total = slides.length;
-  var idx = 0;
-  var counter = document.getElementById('counter');
-  var dots = document.getElementById('dots');
-  var prevBtn = document.getElementById('prev');
-  var nextBtn = document.getElementById('next');
-  var hint = document.getElementById('hint');
+  /* ---------- Navigation ---------- */
+  var slides=[].slice.call(document.querySelectorAll('.slide'));
+  var total=slides.length, idx=0;
+  var counter=document.getElementById('counter'),
+      dots=document.getElementById('dots'),
+      prevBtn=document.getElementById('prev'),
+      nextBtn=document.getElementById('next'),
+      hint=document.getElementById('hint'),
+      progress=document.getElementById('progress'),
+      veil=document.getElementById('veil');
 
   slides.forEach(function(s,i){
-    var p = document.createElement('button');
-    p.className = 'pip' + (i===0?' on':'');
+    var p=document.createElement('button');
+    p.className='pip'+(i===0?' on':'');
     p.setAttribute('aria-label','Slide '+(i+1));
-    p.addEventListener('click', function(){ go(i); });
+    p.addEventListener('click',function(){go(i);});
     dots.appendChild(p);
   });
-  var pips = Array.prototype.slice.call(dots.children);
-
-  function pad(n){ return (n<10?'0':'')+n; }
+  var pips=[].slice.call(dots.children);
+  function pad(n){return (n<10?'0':'')+n;}
 
   function applyAccent(hex){
-    document.documentElement.style.setProperty('--accent', hex);
-    // soft version
     var r=parseInt(hex.substr(1,2),16),g=parseInt(hex.substr(3,2),16),b=parseInt(hex.substr(5,2),16);
+    document.documentElement.style.setProperty('--accent',hex);
     document.documentElement.style.setProperty('--accent-soft','rgba('+r+','+g+','+b+',.16)');
   }
-
   function go(n){
-    if(n<0||n>=total||n===idx) { if(n===idx) return; }
-    n = Math.max(0, Math.min(total-1, n));
-    slides[idx].classList.remove('active');
-    pips[idx].classList.remove('on');
-    idx = n;
-    slides[idx].classList.add('active');
-    pips[idx].classList.add('on');
-    counter.textContent = pad(idx+1)+' / '+pad(total);
-    applyAccent(slides[idx].dataset.accent || '#5aa9ff');
-    setScene(slides[idx].dataset.mode || 'trio', slides[idx].dataset.accent || '#5aa9ff');
-    prevBtn.disabled = idx===0;
-    nextBtn.disabled = idx===total-1;
-    if(hint) hint.style.display = idx===0 ? 'block':'none';
+    n=Math.max(0,Math.min(total-1,n)); if(n===idx) return;
+    slides[idx].classList.remove('active'); pips[idx].classList.remove('on');
+    idx=n;
+    slides[idx].classList.add('active'); pips[idx].classList.add('on');
+    counter.textContent=pad(idx+1)+' / '+pad(total);
+    progress.style.width=((idx)/(total-1)*100)+'%';
+    applyAccent(slides[idx].dataset.accent||'#d8a84b');
+    setScene(slides[idx].dataset.mode||'trio', slides[idx].dataset.accent||'#d8a84b');
+    var centered=slides[idx].classList.contains('center');
+    veil.style.opacity=centered?0:1;
+    prevBtn.disabled=idx===0; nextBtn.disabled=idx===total-1;
+    if(hint) hint.style.display=idx===0?'block':'none';
   }
-  function nextS(){ go(idx+1); }
-  function prevS(){ go(idx-1); }
-
-  prevBtn.addEventListener('click', prevS);
-  nextBtn.addEventListener('click', nextS);
-  document.addEventListener('keydown', function(e){
-    if(e.key==='ArrowRight'||e.key==='ArrowDown'||e.key===' '||e.key==='PageDown'){ e.preventDefault(); nextS(); }
-    else if(e.key==='ArrowLeft'||e.key==='ArrowUp'||e.key==='PageUp'){ e.preventDefault(); prevS(); }
-    else if(e.key==='Home'){ go(0); } else if(e.key==='End'){ go(total-1); }
+  var next=function(){go(idx+1);}, prev=function(){go(idx-1);};
+  prevBtn.addEventListener('click',prev); nextBtn.addEventListener('click',next);
+  document.addEventListener('keydown',function(e){
+    if(e.key==='ArrowRight'||e.key==='ArrowDown'||e.key===' '||e.key==='PageDown'){e.preventDefault();next();}
+    else if(e.key==='ArrowLeft'||e.key==='ArrowUp'||e.key==='PageUp'){e.preventDefault();prev();}
+    else if(e.key==='Home'){go(0);} else if(e.key==='End'){go(total-1);}
   });
-  // wheel (debounced)
-  var wheelLock=false;
-  window.addEventListener('wheel', function(e){
-    if(wheelLock) return;
-    if(Math.abs(e.deltaY)<24) return;
-    wheelLock=true; setTimeout(function(){wheelLock=false;}, 750);
-    if(e.deltaY>0) nextS(); else prevS();
-  }, {passive:true});
-  // touch
-  var tsx=0,tsy=0;
-  window.addEventListener('touchstart',function(e){tsx=e.touches[0].clientX;tsy=e.touches[0].clientY;},{passive:true});
-  window.addEventListener('touchend',function(e){
-    var dx=e.changedTouches[0].clientX-tsx, dy=e.changedTouches[0].clientY-tsy;
-    if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)){ dx<0?nextS():prevS(); }
-    else if(Math.abs(dy)>60){ dy<0?nextS():prevS(); }
+  var wlock=false;
+  window.addEventListener('wheel',function(e){
+    if(wlock||Math.abs(e.deltaY)<24) return;
+    wlock=true; setTimeout(function(){wlock=false;},760);
+    e.deltaY>0?next():prev();
   },{passive:true});
+  var tx=0,ty=0;
+  window.addEventListener('touchstart',function(e){tx=e.touches[0].clientX;ty=e.touches[0].clientY;},{passive:true});
+  window.addEventListener('touchend',function(e){
+    var dx=e.changedTouches[0].clientX-tx, dy=e.changedTouches[0].clientY-ty;
+    if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)) dx<0?next():prev();
+    else if(Math.abs(dy)>60) dy<0?next():prev();
+  },{passive:true});
+  prevBtn.disabled=true;
+  counter.textContent='01 / '+pad(total);
 
-  prevBtn.disabled = true;
+  /* ---------- Three.js ---------- */
+  var canvas=document.getElementById('scene');
+  var renderer,scene,camera,particles,grid,groups={},current='trio';
+  var targetColor=new THREE.Color('#d8a84b');
+  var GOLD=0xd8a84b, mouseX=0,mouseY=0,t=0;
 
-  /* ---------- Three.js background ---------- */
-  var canvas = document.getElementById('scene');
-  var renderer, scene, camera, particles, groups={}, current='trio';
-  var targetColor = new THREE.Color('#5aa9ff');
-  var mouseX=0, mouseY=0;
-
-  function hexToColor(h){ return new THREE.Color(h); }
+  function docPlane(accent){
+    var g=new THREE.Group();
+    var face=new THREE.Mesh(new THREE.PlaneGeometry(0.62,0.84),
+      new THREE.MeshStandardMaterial({color:0xf3ead4, emissive:0x2a2410, emissiveIntensity:.25, metalness:.1, roughness:.7, side:THREE.DoubleSide}));
+    var edge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(0.62,0.84)),
+      new THREE.LineBasicMaterial({color:GOLD,transparent:true,opacity:.8}));
+    g.add(face); g.add(edge);
+    return g;
+  }
+  function makeGroup(){var g=new THREE.Group();scene.add(g);return g;}
 
   function init3D(){
-    renderer = new THREE.WebGLRenderer({canvas:canvas, antialias:true, alpha:true});
+    renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true,alpha:true});
     renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.1, 100);
-    camera.position.set(0,0,8);
+    renderer.setSize(window.innerWidth,window.innerHeight);
+    scene=new THREE.Scene();
+    scene.fog=new THREE.FogExp2(0x050410,0.045);
+    camera=new THREE.PerspectiveCamera(55,window.innerWidth/window.innerHeight,0.1,120);
+    camera.position.set(0,0.4,8);
 
-    scene.add(new THREE.AmbientLight(0x88aaff, 0.6));
-    var d = new THREE.DirectionalLight(0xffffff, 0.9); d.position.set(4,6,8); scene.add(d);
-    var p2 = new THREE.PointLight(0xa970ff, 0.7, 50); p2.position.set(-6,-2,4); scene.add(p2);
+    scene.add(new THREE.AmbientLight(0xfff0d0,0.55));
+    var d=new THREE.DirectionalLight(0xffffff,0.85); d.position.set(4,6,8); scene.add(d);
+    var p2=new THREE.PointLight(GOLD,0.9,60); p2.position.set(-6,2,5); scene.add(p2);
 
-    buildParticles();
-    buildTrio();
-    buildNova();
-    buildLoki();
-    buildHilde();
-    setScene('trio','#5aa9ff');
-    animate();
+    // blueprint grid floor
+    grid=new THREE.GridHelper(80,80,GOLD,0x231d3a);
+    grid.material.transparent=true; grid.material.opacity=0.22;
+    grid.position.y=-3.2; scene.add(grid);
+
+    buildParticles(); buildTrio(); buildNova(); buildHilde(); buildLoki();
+    setScene('trio','#d8a84b'); animate();
   }
 
   function buildParticles(){
-    var n=1600, pos=new Float32Array(n*3);
+    var n=1500,pos=new Float32Array(n*3);
     for(var i=0;i<n;i++){
-      var r=18*Math.cbrt(Math.random());
-      var th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1);
-      pos[i*3]=r*Math.sin(ph)*Math.cos(th);
-      pos[i*3+1]=r*Math.sin(ph)*Math.sin(th);
-      pos[i*3+2]=r*Math.cos(ph);
+      var r=20*Math.cbrt(Math.random()),th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1);
+      pos[i*3]=r*Math.sin(ph)*Math.cos(th); pos[i*3+1]=r*Math.sin(ph)*Math.sin(th); pos[i*3+2]=r*Math.cos(ph);
     }
-    var g=new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(pos,3));
-    var m=new THREE.PointsMaterial({color:0x6f8bd0, size:0.05, transparent:true, opacity:0.7, depthWrite:false});
-    particles=new THREE.Points(g,m);
+    var g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    particles=new THREE.Points(g,new THREE.PointsMaterial({color:GOLD,size:0.045,transparent:true,opacity:.7,depthWrite:false}));
     scene.add(particles);
   }
 
-  function makeGroup(){ var g=new THREE.Group(); scene.add(g); return g; }
-
-  // 0/1/5/6 : the trio — three orbs orbiting a core, with links
+  // trio: gold core + 3 accent orbs + orbiting documents
   function buildTrio(){
-    var g=makeGroup();
-    var colors=[0x5aa9ff,0xa970ff,0x4dd6a0];
-    var core=new THREE.Mesh(
-      new THREE.IcosahedronGeometry(0.7,0),
-      new THREE.MeshStandardMaterial({color:0xdfe9ff, emissive:0x24345f, metalness:.4, roughness:.3, flatShading:true})
-    );
-    g.add(core);
-    g.userData.orbs=[];
+    var g=makeGroup(); var cols=[0x5b8cff,0x36c08e,0xa96bff];
+    var core=new THREE.Mesh(new THREE.IcosahedronGeometry(0.72,0),
+      new THREE.MeshStandardMaterial({color:0xe9cf9a,emissive:0x6b4f15,emissiveIntensity:.5,metalness:.7,roughness:.25,flatShading:true}));
+    g.add(core); g.userData.orbs=[]; g.userData.docs=[];
     for(var i=0;i<3;i++){
-      var orb=new THREE.Mesh(
-        new THREE.IcosahedronGeometry(0.42,1),
-        new THREE.MeshStandardMaterial({color:colors[i], emissive:colors[i], emissiveIntensity:.45, metalness:.3, roughness:.35, flatShading:true})
-      );
-      var ring=new THREE.Mesh(
-        new THREE.TorusGeometry(2.6, 0.012, 8, 120),
-        new THREE.MeshBasicMaterial({color:colors[i], transparent:true, opacity:.28})
-      );
-      ring.rotation.x = Math.PI/2 + i*0.5;
-      ring.rotation.y = i*1.1;
-      g.add(ring);
-      g.userData.orbs.push({mesh:orb, ring:ring, a:i*(Math.PI*2/3), speed:0.5+i*0.12, rad:2.6});
-      g.add(orb);
+      var orb=new THREE.Mesh(new THREE.IcosahedronGeometry(0.4,1),
+        new THREE.MeshStandardMaterial({color:cols[i],emissive:cols[i],emissiveIntensity:.5,metalness:.3,roughness:.35,flatShading:true}));
+      g.add(orb); g.userData.orbs.push({m:orb,a:i*(Math.PI*2/3),sp:0.5+i*0.1,rad:2.5});
+      var ring=new THREE.Mesh(new THREE.TorusGeometry(2.5,0.01,8,120),new THREE.MeshBasicMaterial({color:GOLD,transparent:true,opacity:.2}));
+      ring.rotation.x=Math.PI/2+i*0.4; g.add(ring);
     }
+    for(var j=0;j<5;j++){var dp=docPlane();g.add(dp);g.userData.docs.push({m:dp,a:j*1.25,rad:3.4,sp:0.3+j*0.05});}
     groups.trio=g;
   }
-
-  // Nova : faceted knowledge crystal (wireframe + glow)
   function buildNova(){
     var g=makeGroup();
-    var solid=new THREE.Mesh(
-      new THREE.IcosahedronGeometry(1.7,1),
-      new THREE.MeshStandardMaterial({color:0x10306a, emissive:0x12356f, metalness:.5, roughness:.25, flatShading:true, transparent:true, opacity:.85})
-    );
-    var wire=new THREE.LineSegments(
-      new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(1.95,1)),
-      new THREE.LineBasicMaterial({color:0x5aa9ff, transparent:true, opacity:.65})
-    );
-    g.add(solid); g.add(wire);
-    g.userData.spin={x:0.0015,y:0.006};
-    groups.nova=g;
+    g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(1.55,1),
+      new THREE.MeshStandardMaterial({color:0x1a2a55,emissive:0x14306a,emissiveIntensity:.5,metalness:.6,roughness:.25,flatShading:true,transparent:true,opacity:.9})));
+    g.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(1.8,1)),
+      new THREE.LineBasicMaterial({color:0x6f9bff,transparent:true,opacity:.6})));
+    g.userData.docs=[]; for(var j=0;j<4;j++){var d=docPlane();g.add(d);g.userData.docs.push({m:d,a:j*1.57,rad:3.0,sp:0.35});}
+    g.userData.spin={x:0.0016,y:0.006}; groups.nova=g;
   }
-
-  // Loki : interconnected network / engine (torusknot + nodes)
-  function buildLoki(){
-    var g=makeGroup();
-    var knot=new THREE.Mesh(
-      new THREE.TorusKnotGeometry(1.25,0.34,160,24,2,3),
-      new THREE.MeshStandardMaterial({color:0xa970ff, emissive:0x4a1f8c, emissiveIntensity:.5, metalness:.6, roughness:.25})
-    );
-    g.add(knot);
-    for(var i=0;i<14;i++){
-      var s=new THREE.Mesh(
-        new THREE.SphereGeometry(0.07,12,12),
-        new THREE.MeshBasicMaterial({color:0xd9c2ff})
-      );
-      var R=2.4, a=Math.random()*Math.PI*2, b=Math.random()*Math.PI;
-      s.position.set(R*Math.sin(b)*Math.cos(a), R*Math.cos(b), R*Math.sin(b)*Math.sin(a));
-      g.add(s);
-    }
-    g.userData.spin={x:0.004,y:0.008};
-    groups.loki=g;
-  }
-
-  // Hilde : low-poly globe with lat/long grid + pin
   function buildHilde(){
     var g=makeGroup();
-    var globe=new THREE.Mesh(
-      new THREE.SphereGeometry(1.6,24,24),
-      new THREE.MeshStandardMaterial({color:0x0c3d2e, emissive:0x0d4634, metalness:.3, roughness:.5, flatShading:true})
-    );
-    var grid=new THREE.LineSegments(
-      new THREE.WireframeGeometry(new THREE.SphereGeometry(1.63,16,12)),
-      new THREE.LineBasicMaterial({color:0x4dd6a0, transparent:true, opacity:.45})
-    );
-    g.add(globe); g.add(grid);
-    // map pin
+    g.add(new THREE.Mesh(new THREE.SphereGeometry(1.5,24,24),
+      new THREE.MeshStandardMaterial({color:0x0d3b2c,emissive:0x0e4a36,emissiveIntensity:.4,metalness:.3,roughness:.5,flatShading:true})));
+    g.add(new THREE.LineSegments(new THREE.WireframeGeometry(new THREE.SphereGeometry(1.53,16,12)),
+      new THREE.LineBasicMaterial({color:0x36c08e,transparent:true,opacity:.45})));
     var pin=new THREE.Group();
-    var head=new THREE.Mesh(new THREE.SphereGeometry(0.22,16,16), new THREE.MeshStandardMaterial({color:0x8affd1, emissive:0x2fae7e, emissiveIntensity:.6}));
-    var cone=new THREE.Mesh(new THREE.ConeGeometry(0.2,0.5,16), new THREE.MeshStandardMaterial({color:0x8affd1, emissive:0x2fae7e, emissiveIntensity:.6}));
-    head.position.y=0.34; cone.position.y=-0.05; cone.rotation.x=Math.PI;
-    pin.add(head); pin.add(cone);
-    pin.position.set(0,2.05,0);
-    g.add(pin);
-    g.userData.spin={x:0.0,y:0.005};
-    g.userData.pin=pin;
-    groups.hilde=g;
+    var head=new THREE.Mesh(new THREE.SphereGeometry(0.2,16,16),new THREE.MeshStandardMaterial({color:0x8affd1,emissive:0x2fae7e,emissiveIntensity:.7}));
+    var cone=new THREE.Mesh(new THREE.ConeGeometry(0.18,0.46,16),new THREE.MeshStandardMaterial({color:0x8affd1,emissive:0x2fae7e,emissiveIntensity:.7}));
+    head.position.y=0.32; cone.position.y=-0.06; cone.rotation.x=Math.PI; pin.add(head); pin.add(cone); pin.position.y=1.95; g.add(pin);
+    g.userData.docs=[]; for(var j=0;j<3;j++){var d=docPlane();g.add(d);g.userData.docs.push({m:d,a:j*2.1,rad:2.9,sp:0.3});}
+    g.userData.spin={x:0,y:0.005}; g.userData.pin=pin; groups.hilde=g;
+  }
+  function buildLoki(){
+    var g=makeGroup();
+    g.add(new THREE.Mesh(new THREE.TorusKnotGeometry(1.15,0.32,150,22,2,3),
+      new THREE.MeshStandardMaterial({color:0x4a2e78,emissive:0x5a2da0,emissiveIntensity:.5,metalness:.6,roughness:.25})));
+    g.userData.docs=[]; for(var j=0;j<7;j++){var d=docPlane();g.add(d);g.userData.docs.push({m:d,a:j*0.9,rad:2.7+0.3*(j%3),sp:0.3+j*0.04});}
+    g.userData.spin={x:0.004,y:0.008}; groups.loki=g;
   }
 
-  function setScene(mode, accentHex){
-    current = groups[mode] ? mode : 'trio';
-    for(var k in groups){ groups[k].visible = (k===current); }
-    targetColor = hexToColor(accentHex);
+  function setScene(mode,hex){
+    current=groups[mode]?mode:'trio';
+    for(var k in groups) groups[k].visible=(k===current);
+    targetColor=new THREE.Color(hex);
   }
 
-  var t=0;
   function animate(){
-    requestAnimationFrame(animate);
-    t+=0.01;
-    if(particles){ particles.rotation.y += 0.0006; particles.rotation.x += 0.0002; }
-
-    // gentle parallax toward mouse
-    camera.position.x += (mouseX*0.8 - camera.position.x)*0.04;
-    camera.position.y += (-mouseY*0.5 - camera.position.y)*0.04;
+    requestAnimationFrame(animate); t+=0.01;
+    if(particles){particles.rotation.y+=0.0006;particles.rotation.x+=0.0002;particles.material.color.lerp(targetColor,0.02);}
+    if(grid) grid.position.z=((t*0.4)%4)-2;
+    camera.position.x+=(mouseX*0.7-camera.position.x)*0.04;
+    camera.position.y+=(0.4-mouseY*0.4-camera.position.y)*0.04;
     camera.lookAt(0,0,0);
-
-    // lerp particle tint toward accent
-    if(particles){ particles.material.color.lerp(targetColor, 0.03); }
-
-    var g = groups[current];
+    var g=groups[current];
     if(g){
       if(current==='trio'){
-        g.rotation.y += 0.0025;
-        g.userData.orbs.forEach(function(o){
-          o.a += 0.008*o.speed;
-          o.mesh.position.set(Math.cos(o.a)*o.rad, Math.sin(o.a*0.7)*0.5, Math.sin(o.a)*o.rad);
-          o.mesh.rotation.y += 0.02;
-          o.ring.rotation.z += 0.002;
-        });
+        g.rotation.y+=0.0022;
+        g.userData.orbs.forEach(function(o){o.a+=0.008*o.sp;o.m.position.set(Math.cos(o.a)*o.rad,Math.sin(o.a*0.7)*0.5,Math.sin(o.a)*o.rad);o.m.rotation.y+=0.02;});
       } else {
-        var sp=g.userData.spin||{x:0.003,y:0.006};
-        g.rotation.x += sp.x; g.rotation.y += sp.y;
-        if(current==='hilde' && g.userData.pin){
-          g.userData.pin.position.y = 2.05 + Math.sin(t*1.6)*0.12;
-        }
+        var sp=g.userData.spin||{x:0.003,y:0.006}; g.rotation.x+=sp.x; g.rotation.y+=sp.y;
+        if(current==='hilde'&&g.userData.pin) g.userData.pin.position.y=1.95+Math.sin(t*1.6)*0.12;
       }
+      if(g.userData.docs) g.userData.docs.forEach(function(o){
+        o.a+=0.006*o.sp;
+        o.m.position.set(Math.cos(o.a)*o.rad, Math.sin(o.a*1.3)*0.9, Math.sin(o.a)*o.rad);
+        o.m.rotation.y=o.a+Math.PI/2; o.m.rotation.z=Math.sin(o.a)*0.2;
+      });
     }
     renderer.render(scene,camera);
   }
 
-  window.addEventListener('mousemove', function(e){
-    mouseX = (e.clientX/window.innerWidth)*2-1;
-    mouseY = (e.clientY/window.innerHeight)*2-1;
-  });
-  window.addEventListener('resize', function(){
-    if(!renderer) return;
-    camera.aspect = window.innerWidth/window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
+  window.addEventListener('mousemove',function(e){mouseX=(e.clientX/window.innerWidth)*2-1;mouseY=(e.clientY/window.innerHeight)*2-1;});
+  window.addEventListener('resize',function(){if(!renderer)return;camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
 
-  if(window.THREE){ init3D(); }
-  else { document.getElementById('veil').style.background='var(--bg)'; }
-
-  // init counter
-  counter.textContent = '01 / '+pad(total);
+  if(window.THREE) init3D();
 })();
 </script>
 </body>
