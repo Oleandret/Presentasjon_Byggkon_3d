@@ -1,0 +1,14 @@
+{
+  "name": "byggkon-ai-launch",
+  "version": "1.0.0",
+  "private": true,
+  "description": "3D produktlansering for Byggkons AI-agenter: Nova, Loki og Hilde.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED"
+}

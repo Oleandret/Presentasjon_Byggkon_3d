@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Byggkon AI — Nova · Loki · Hilde</title>
+<style>
+  :root{
+    --bg:#070b16;
+    --bg2:#0c1426;
+    --ink:#eaf0ff;
+    --muted:#9fb0d0;
+    --accent:#5aa9ff;
+    --accent-soft:rgba(90,169,255,.16);
+    --card:rgba(13,20,40,.55);
+    --border:rgba(255,255,255,.10);
+    --font:"Inter","Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:var(--font);
+    background:radial-gradient(1200px 800px at 70% 20%, var(--bg2), var(--bg) 70%);
+    color:var(--ink);
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  #scene{position:fixed;inset:0;z-index:0;}
+  /* readability gradient over 3D */
+  #veil{
+    position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:linear-gradient(90deg, rgba(5,8,18,.92) 0%, rgba(5,8,18,.55) 38%, rgba(5,8,18,0) 62%);
+    transition:opacity .6s ease;
+  }
+  #deck{position:fixed;inset:0;z-index:2;}
+
+  .slide{
+    position:absolute;inset:0;
+    display:flex;align-items:center;
+    padding:7vh clamp(28px,8vw,140px);
+    opacity:0;visibility:hidden;
+    transform:translateY(34px);
+    transition:opacity .7s ease, transform .7s ease, visibility .7s;
+  }
+  .slide.active{opacity:1;visibility:visible;transform:translateY(0)}
+  .wrap{max-width:680px}
+  .slide.center{justify-content:center;text-align:center}
+  .slide.center .wrap{max-width:840px}
+
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:9px;
+    font-size:13px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:22px;
+    padding:7px 14px;border:1px solid var(--border);border-radius:999px;
+    background:var(--accent-soft);
+  }
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
+  h1{font-size:clamp(40px,7vw,84px);line-height:1.02;font-weight:800;letter-spacing:-.02em}
+  h1 .grad{
+    background:linear-gradient(120deg,#7cc0ff,#a970ff 50%,#4dd6a0);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  h2{font-size:clamp(34px,5.4vw,62px);line-height:1.05;font-weight:800;letter-spacing:-.02em}
+  .agent-name{color:var(--accent)}
+  .lead{font-size:clamp(17px,2.1vw,22px);line-height:1.55;color:var(--muted);margin-top:20px;max-width:600px}
+  .slide.center .lead{margin-left:auto;margin-right:auto}
+  .tag{font-size:14px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+
+  ul.feat{list-style:none;margin-top:26px;display:grid;gap:14px}
+  ul.feat li{
+    display:flex;gap:14px;align-items:flex-start;
+    font-size:16px;line-height:1.45;color:#d6e0f5;
+  }
+  ul.feat li::before{
+    content:"";flex:0 0 auto;margin-top:7px;
+    width:9px;height:9px;border-radius:2px;transform:rotate(45deg);
+    background:var(--accent);box-shadow:0 0 10px var(--accent);
+  }
+  .chip{
+    display:inline-block;margin-top:30px;
+    font-size:15px;font-weight:600;color:var(--ink);
+    padding:11px 20px;border-radius:12px;text-decoration:none;
+    border:1px solid var(--border);
+    background:linear-gradient(180deg, var(--accent-soft), rgba(255,255,255,.02));
+    transition:transform .2s ease, border-color .2s ease;
+  }
+  .chip:hover{transform:translateY(-2px);border-color:var(--accent)}
+  .chip span{color:var(--accent)}
+
+  /* trio comparison */
+  .trio{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:38px;text-align:left}
+  .trio .col{
+    border:1px solid var(--border);border-radius:16px;padding:22px 20px;
+    background:var(--card);backdrop-filter:blur(8px);
+  }
+  .trio h3{font-size:20px;margin-bottom:6px}
+  .trio .role{font-size:13px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px}
+  .trio p{font-size:14px;line-height:1.5;color:var(--muted)}
+  .c-nova{color:#5aa9ff} .c-loki{color:#a970ff} .c-hilde{color:#4dd6a0}
+
+  .meta{margin-top:30px;display:flex;flex-wrap:wrap;gap:10px 26px;color:var(--muted);font-size:15px}
+  .meta a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--border)}
+  .meta a:hover{border-color:var(--accent)}
+
+  /* nav */
+  #nav{position:fixed;z-index:5;right:clamp(20px,4vw,46px);bottom:34px;display:flex;gap:12px}
+  .navbtn{
+    width:50px;height:50px;border-radius:50%;cursor:pointer;
+    border:1px solid var(--border);background:rgba(15,22,44,.7);color:var(--ink);
+    font-size:22px;display:grid;place-items:center;
+    transition:border-color .2s, transform .15s, background .2s;backdrop-filter:blur(6px);
+  }
+  .navbtn:hover{border-color:var(--accent);background:rgba(20,30,60,.9)}
+  .navbtn:active{transform:scale(.92)}
+  .navbtn:disabled{opacity:.32;cursor:default}
+
+  #dots{position:fixed;z-index:5;left:clamp(20px,4vw,46px);bottom:40px;display:flex;flex-direction:column;gap:12px}
+  .pip{width:11px;height:11px;border-radius:50%;border:1px solid var(--border);cursor:pointer;background:transparent;transition:all .25s}
+  .pip.on{background:var(--accent);border-color:var(--accent);box-shadow:0 0 12px var(--accent)}
+
+  #counter{position:fixed;z-index:5;right:clamp(20px,4vw,46px);top:32px;font-size:13px;letter-spacing:.18em;color:var(--muted)}
+  #brand{position:fixed;z-index:5;left:clamp(20px,4vw,46px);top:30px;font-weight:800;letter-spacing:.04em;font-size:16px}
+  #brand b{color:var(--accent)}
+  #hint{position:fixed;z-index:5;left:50%;transform:translateX(-50%);bottom:34px;color:var(--muted);font-size:13px;letter-spacing:.1em;animation:pulse 2.4s infinite}
+  @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+
+  @media (max-width:820px){
+    #veil{background:linear-gradient(180deg, rgba(5,8,18,.55) 0%, rgba(5,8,18,.85) 60%)}
+    .slide{padding:9vh 26px;align-items:flex-end}
+    .slide.center{align-items:center}
+    .wrap{max-width:100%}
+    .trio{grid-template-columns:1fr}
+    #dots{display:none}
+    #hint{display:none}
+  }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="veil"></div>
+
+<div id="brand">BYGGKON <b>AI</b></div>
+<div id="counter">01 / 07</div>
+
+<div id="deck">
+
+  <!-- 0 HERO -->
+  <section class="slide center active" data-accent="#5aa9ff" data-mode="trio">
+    <div class="wrap">
+      <span class="eyebrow"><span class="dot"></span> Produktlansering 2026</span>
+      <h1>Møt <span class="grad">Nova, Loki<br>og Hilde</span></h1>
+      <p class="lead">Tre spesialiserte AI-agenter, bygget for byggebransjen — kunnskap, dokumenter og eiendom, samlet på én plattform.</p>
+    </div>
+  </section>
+
+  <!-- 1 INTRO -->
+  <section class="slide center" data-accent="#7cc0ff" data-mode="trio">
+    <div class="wrap">
+      <div class="tag">Hvorfor tre agenter?</div>
+      <h2>Én agent kan ikke kunne alt.<br>Tre kan dekke alt.</h2>
+      <p class="lead">Byggkon har delt opp arbeidshverdagen i tre domener og gitt hvert sitt fagdyktige AI-hode. Du spør den som kan svaret — i stedet for å lete selv.</p>
+      <div class="trio">
+        <div class="col"><div class="role c-nova">Fag &amp; regelverk</div><h3 class="c-nova">Nova</h3><p>TEK17, NS-standarder og interne rutiner — med kildehenvisning.</p></div>
+        <div class="col"><div class="role c-loki">Dokumenter &amp; tegninger</div><h3 class="c-loki">Loki</h3><p>Søker i hele OneDrive — inkludert AutoCAD-tegninger.</p></div>
+        <div class="col"><div class="role c-hilde">Eiendom</div><h3 class="c-hilde">Hilde</h3><p>Eierinfo og oppslag direkte i Kartverkets matrikkel.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 NOVA -->
+  <section class="slide" data-accent="#5aa9ff" data-mode="nova">
+    <div class="wrap">
+      <div class="tag" style="color:#5aa9ff">Agent 01 — Fagassistenten</div>
+      <h2><span class="agent-name">Nova</span> kan byggfaget.</h2>
+      <p class="lead">Den interne fageksperten. Nova søker i fagdokumentasjonen og svarer på faglige spørsmål om bygging, regelverk og tekniske detaljer — alltid med kilder.</p>
+      <ul class="feat">
+        <li>Slår opp i TEK17, NS-standarder og SINTEF Byggforskserien</li>
+        <li>Kjenner interne rutiner og prosjektdokumenter</li>
+        <li>Svarer med kildehenvisninger du kan etterprøve</li>
+        <li>Drevet av Claude Opus 4.8</li>
+      </ul>
+      <a class="chip" href="https://nova-ai-agent-bygg-kon-production.up.railway.app/" target="_blank" rel="noopener">Åpne Nova <span>→</span></a>
+    </div>
+  </section>
+
+  <!-- 3 LOKI -->
+  <section class="slide" data-accent="#a970ff" data-mode="loki">
+    <div class="wrap">
+      <div class="tag" style="color:#a970ff">Agent 02 — Kunnskapsmotoren</div>
+      <h2><span class="agent-name">Loki</span> husker hver fil.</h2>
+      <p class="lead">En privat AI-kunnskapsmotor som kontinuerlig synkroniserer hele Byggkons OneDrive og SharePoint inn i et søk som forstår innholdet — ikke bare filnavnet.</p>
+      <ul class="feat">
+        <li>Indekserer PDF, Office, e-post og 25+ formater — også AutoCAD DWG &amp; DXF</li>
+        <li>Norsk OCR på skannede tegninger og dokumenter</li>
+        <li>Oppdateres hvert 10. minutt — 100 % privat i egen tenant</li>
+        <li>Koble på Claude eller Cursor via MCP</li>
+      </ul>
+      <a class="chip" href="https://byggkon-loki-ai-production.up.railway.app/" target="_blank" rel="noopener">Åpne Loki <span>→</span></a>
+    </div>
+  </section>
+
+  <!-- 4 HILDE -->
+  <section class="slide" data-accent="#4dd6a0" data-mode="hilde">
+    <div class="wrap">
+      <div class="tag" style="color:#4dd6a0">Agent 03 — Eiendomseksperten</div>
+      <h2><span class="agent-name">Hilde</span> kjenner hver tomt.</h2>
+      <p class="lead">Eiendomsagenten med direkte linje til Kartverket. Hilde finner eierinformasjon og kan svare på alt i matrikkelen — fra gårds- og bruksnummer til tomtedata.</p>
+      <ul class="feat">
+        <li>Finner eierinformasjon for enhver eiendom</li>
+        <li>Spør hele matrikkelen fra Kartverket</li>
+        <li>Søk på adresse, kommune, eier eller naturlig språk</li>
+        <li>Perfekt for tomte- og eiendomsanalyse før prosjektstart</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 5 SAMARBEID -->
+  <section class="slide center" data-accent="#7cc0ff" data-mode="trio">
+    <div class="wrap">
+      <div class="tag">Sammen</div>
+      <h2>Hele arbeidsflyten,<br>fra spørsmål til byggeplass.</h2>
+      <div class="trio">
+        <div class="col"><div class="role c-nova">01 · Nova</div><p>«Hva sier TEK17 om rømningsvei her?» — får regelverket og kilden.</p></div>
+        <div class="col"><div class="role c-loki">02 · Loki</div><p>«Finn snittegningen for Travbaneveien 3» — henter tegningen fra arkivet.</p></div>
+        <div class="col"><div class="role c-hilde">03 · Hilde</div><p>«Hvem eier nabotomten?» — slår opp i matrikkelen på sekunder.</p></div>
+      </div>
+      <p class="lead">Tre agenter som snakker samme språk som faget ditt — tilgjengelig der du jobber.</p>
+    </div>
+  </section>
+
+  <!-- 6 CTA -->
+  <section class="slide center" data-accent="#a970ff" data-mode="trio">
+    <div class="wrap">
+      <span class="eyebrow"><span class="dot"></span> Klar til bruk</span>
+      <h1>Ta i bruk <span class="grad">Byggkon AI</span></h1>
+      <p class="lead">Nova, Loki og Hilde er live. Logg inn og spør i vei.</p>
+      <div class="meta">
+        <span>🌐 <a href="https://www.byggkon.no" target="_blank" rel="noopener">byggkon.no</a></span>
+        <span>✉️ <a href="mailto:nova@byggkon.ai">nova@byggkon.ai</a></span>
+        <span>📍 Travbaneveien 3, 4031 Stavanger</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div id="dots"></div>
+<div id="nav">
+  <button class="navbtn" id="prev" aria-label="Forrige">‹</button>
+  <button class="navbtn" id="next" aria-label="Neste">›</button>
+</div>
+<div id="hint">Bruk piltastene ← →</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  "use strict";
+  /* ---------- Slides / navigation ---------- */
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var total = slides.length;
+  var idx = 0;
+  var counter = document.getElementById('counter');
+  var dots = document.getElementById('dots');
+  var prevBtn = document.getElementById('prev');
+  var nextBtn = document.getElementById('next');
+  var hint = document.getElementById('hint');
+
+  slides.forEach(function(s,i){
+    var p = document.createElement('button');
+    p.className = 'pip' + (i===0?' on':'');
+    p.setAttribute('aria-label','Slide '+(i+1));
+    p.addEventListener('click', function(){ go(i); });
+    dots.appendChild(p);
+  });
+  var pips = Array.prototype.slice.call(dots.children);
+
+  function pad(n){ return (n<10?'0':'')+n; }
+
+  function applyAccent(hex){
+    document.documentElement.style.setProperty('--accent', hex);
+    // soft version
+    var r=parseInt(hex.substr(1,2),16),g=parseInt(hex.substr(3,2),16),b=parseInt(hex.substr(5,2),16);
+    document.documentElement.style.setProperty('--accent-soft','rgba('+r+','+g+','+b+',.16)');
+  }
+
+  function go(n){
+    if(n<0||n>=total||n===idx) { if(n===idx) return; }
+    n = Math.max(0, Math.min(total-1, n));
+    slides[idx].classList.remove('active');
+    pips[idx].classList.remove('on');
+    idx = n;
+    slides[idx].classList.add('active');
+    pips[idx].classList.add('on');
+    counter.textContent = pad(idx+1)+' / '+pad(total);
+    applyAccent(slides[idx].dataset.accent || '#5aa9ff');
+    setScene(slides[idx].dataset.mode || 'trio', slides[idx].dataset.accent || '#5aa9ff');
+    prevBtn.disabled = idx===0;
+    nextBtn.disabled = idx===total-1;
+    if(hint) hint.style.display = idx===0 ? 'block':'none';
+  }
+  function nextS(){ go(idx+1); }
+  function prevS(){ go(idx-1); }
+
+  prevBtn.addEventListener('click', prevS);
+  nextBtn.addEventListener('click', nextS);
+  document.addEventListener('keydown', function(e){
+    if(e.key==='ArrowRight'||e.key==='ArrowDown'||e.key===' '||e.key==='PageDown'){ e.preventDefault(); nextS(); }
+    else if(e.key==='ArrowLeft'||e.key==='ArrowUp'||e.key==='PageUp'){ e.preventDefault(); prevS(); }
+    else if(e.key==='Home'){ go(0); } else if(e.key==='End'){ go(total-1); }
+  });
+  // wheel (debounced)
+  var wheelLock=false;
+  window.addEventListener('wheel', function(e){
+    if(wheelLock) return;
+    if(Math.abs(e.deltaY)<24) return;
+    wheelLock=true; setTimeout(function(){wheelLock=false;}, 750);
+    if(e.deltaY>0) nextS(); else prevS();
+  }, {passive:true});
+  // touch
+  var tsx=0,tsy=0;
+  window.addEventListener('touchstart',function(e){tsx=e.touches[0].clientX;tsy=e.touches[0].clientY;},{passive:true});
+  window.addEventListener('touchend',function(e){
+    var dx=e.changedTouches[0].clientX-tsx, dy=e.changedTouches[0].clientY-tsy;
+    if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)){ dx<0?nextS():prevS(); }
+    else if(Math.abs(dy)>60){ dy<0?nextS():prevS(); }
+  },{passive:true});
+
+  prevBtn.disabled = true;
+
+  /* ---------- Three.js background ---------- */
+  var canvas = document.getElementById('scene');
+  var renderer, scene, camera, particles, groups={}, current='trio';
+  var targetColor = new THREE.Color('#5aa9ff');
+  var mouseX=0, mouseY=0;
+
+  function hexToColor(h){ return new THREE.Color(h); }
+
+  function init3D(){
+    renderer = new THREE.WebGLRenderer({canvas:canvas, antialias:true, alpha:true});
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.1, 100);
+    camera.position.set(0,0,8);
+
+    scene.add(new THREE.AmbientLight(0x88aaff, 0.6));
+    var d = new THREE.DirectionalLight(0xffffff, 0.9); d.position.set(4,6,8); scene.add(d);
+    var p2 = new THREE.PointLight(0xa970ff, 0.7, 50); p2.position.set(-6,-2,4); scene.add(p2);
+
+    buildParticles();
+    buildTrio();
+    buildNova();
+    buildLoki();
+    buildHilde();
+    setScene('trio','#5aa9ff');
+    animate();
+  }
+
+  function buildParticles(){
+    var n=1600, pos=new Float32Array(n*3);
+    for(var i=0;i<n;i++){
+      var r=18*Math.cbrt(Math.random());
+      var th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1);
+      pos[i*3]=r*Math.sin(ph)*Math.cos(th);
+      pos[i*3+1]=r*Math.sin(ph)*Math.sin(th);
+      pos[i*3+2]=r*Math.cos(ph);
+    }
+    var g=new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+    var m=new THREE.PointsMaterial({color:0x6f8bd0, size:0.05, transparent:true, opacity:0.7, depthWrite:false});
+    particles=new THREE.Points(g,m);
+    scene.add(particles);
+  }
+
+  function makeGroup(){ var g=new THREE.Group(); scene.add(g); return g; }
+
+  // 0/1/5/6 : the trio — three orbs orbiting a core, with links
+  function buildTrio(){
+    var g=makeGroup();
+    var colors=[0x5aa9ff,0xa970ff,0x4dd6a0];
+    var core=new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.7,0),
+      new THREE.MeshStandardMaterial({color:0xdfe9ff, emissive:0x24345f, metalness:.4, roughness:.3, flatShading:true})
+    );
+    g.add(core);
+    g.userData.orbs=[];
+    for(var i=0;i<3;i++){
+      var orb=new THREE.Mesh(
+        new THREE.IcosahedronGeometry(0.42,1),
+        new THREE.MeshStandardMaterial({color:colors[i], emissive:colors[i], emissiveIntensity:.45, metalness:.3, roughness:.35, flatShading:true})
+      );
+      var ring=new THREE.Mesh(
+        new THREE.TorusGeometry(2.6, 0.012, 8, 120),
+        new THREE.MeshBasicMaterial({color:colors[i], transparent:true, opacity:.28})
+      );
+      ring.rotation.x = Math.PI/2 + i*0.5;
+      ring.rotation.y = i*1.1;
+      g.add(ring);
+      g.userData.orbs.push({mesh:orb, ring:ring, a:i*(Math.PI*2/3), speed:0.5+i*0.12, rad:2.6});
+      g.add(orb);
+    }
+    groups.trio=g;
+  }
+
+  // Nova : faceted knowledge crystal (wireframe + glow)
+  function buildNova(){
+    var g=makeGroup();
+    var solid=new THREE.Mesh(
+      new THREE.IcosahedronGeometry(1.7,1),
+      new THREE.MeshStandardMaterial({color:0x10306a, emissive:0x12356f, metalness:.5, roughness:.25, flatShading:true, transparent:true, opacity:.85})
+    );
+    var wire=new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(1.95,1)),
+      new THREE.LineBasicMaterial({color:0x5aa9ff, transparent:true, opacity:.65})
+    );
+    g.add(solid); g.add(wire);
+    g.userData.spin={x:0.0015,y:0.006};
+    groups.nova=g;
+  }
+
+  // Loki : interconnected network / engine (torusknot + nodes)
+  function buildLoki(){
+    var g=makeGroup();
+    var knot=new THREE.Mesh(
+      new THREE.TorusKnotGeometry(1.25,0.34,160,24,2,3),
+      new THREE.MeshStandardMaterial({color:0xa970ff, emissive:0x4a1f8c, emissiveIntensity:.5, metalness:.6, roughness:.25})
+    );
+    g.add(knot);
+    for(var i=0;i<14;i++){
+      var s=new THREE.Mesh(
+        new THREE.SphereGeometry(0.07,12,12),
+        new THREE.MeshBasicMaterial({color:0xd9c2ff})
+      );
+      var R=2.4, a=Math.random()*Math.PI*2, b=Math.random()*Math.PI;
+      s.position.set(R*Math.sin(b)*Math.cos(a), R*Math.cos(b), R*Math.sin(b)*Math.sin(a));
+      g.add(s);
+    }
+    g.userData.spin={x:0.004,y:0.008};
+    groups.loki=g;
+  }
+
+  // Hilde : low-poly globe with lat/long grid + pin
+  function buildHilde(){
+    var g=makeGroup();
+    var globe=new THREE.Mesh(
+      new THREE.SphereGeometry(1.6,24,24),
+      new THREE.MeshStandardMaterial({color:0x0c3d2e, emissive:0x0d4634, metalness:.3, roughness:.5, flatShading:true})
+    );
+    var grid=new THREE.LineSegments(
+      new THREE.WireframeGeometry(new THREE.SphereGeometry(1.63,16,12)),
+      new THREE.LineBasicMaterial({color:0x4dd6a0, transparent:true, opacity:.45})
+    );
+    g.add(globe); g.add(grid);
+    // map pin
+    var pin=new THREE.Group();
+    var head=new THREE.Mesh(new THREE.SphereGeometry(0.22,16,16), new THREE.MeshStandardMaterial({color:0x8affd1, emissive:0x2fae7e, emissiveIntensity:.6}));
+    var cone=new THREE.Mesh(new THREE.ConeGeometry(0.2,0.5,16), new THREE.MeshStandardMaterial({color:0x8affd1, emissive:0x2fae7e, emissiveIntensity:.6}));
+    head.position.y=0.34; cone.position.y=-0.05; cone.rotation.x=Math.PI;
+    pin.add(head); pin.add(cone);
+    pin.position.set(0,2.05,0);
+    g.add(pin);
+    g.userData.spin={x:0.0,y:0.005};
+    g.userData.pin=pin;
+    groups.hilde=g;
+  }
+
+  function setScene(mode, accentHex){
+    current = groups[mode] ? mode : 'trio';
+    for(var k in groups){ groups[k].visible = (k===current); }
+    targetColor = hexToColor(accentHex);
+  }
+
+  var t=0;
+  function animate(){
+    requestAnimationFrame(animate);
+    t+=0.01;
+    if(particles){ particles.rotation.y += 0.0006; particles.rotation.x += 0.0002; }
+
+    // gentle parallax toward mouse
+    camera.position.x += (mouseX*0.8 - camera.position.x)*0.04;
+    camera.position.y += (-mouseY*0.5 - camera.position.y)*0.04;
+    camera.lookAt(0,0,0);
+
+    // lerp particle tint toward accent
+    if(particles){ particles.material.color.lerp(targetColor, 0.03); }
+
+    var g = groups[current];
+    if(g){
+      if(current==='trio'){
+        g.rotation.y += 0.0025;
+        g.userData.orbs.forEach(function(o){
+          o.a += 0.008*o.speed;
+          o.mesh.position.set(Math.cos(o.a)*o.rad, Math.sin(o.a*0.7)*0.5, Math.sin(o.a)*o.rad);
+          o.mesh.rotation.y += 0.02;
+          o.ring.rotation.z += 0.002;
+        });
+      } else {
+        var sp=g.userData.spin||{x:0.003,y:0.006};
+        g.rotation.x += sp.x; g.rotation.y += sp.y;
+        if(current==='hilde' && g.userData.pin){
+          g.userData.pin.position.y = 2.05 + Math.sin(t*1.6)*0.12;
+        }
+      }
+    }
+    renderer.render(scene,camera);
+  }
+
+  window.addEventListener('mousemove', function(e){
+    mouseX = (e.clientX/window.innerWidth)*2-1;
+    mouseY = (e.clientY/window.innerHeight)*2-1;
+  });
+  window.addEventListener('resize', function(){
+    if(!renderer) return;
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  if(window.THREE){ init3D(); }
+  else { document.getElementById('veil').style.background='var(--bg)'; }
+
+  // init counter
+  counter.textContent = '01 / '+pad(total);
+})();
+</script>
+</body>
+</html>
